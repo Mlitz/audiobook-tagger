@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  audiobook-tagger:
+    build: .
+    container_name: audiobook-tagger
+    environment:
+      - AUDNEXUS_API_URL=https://api.audnex.us
+      - AUDNEXUS_API_VERSION=v1
+      - AUDNEXUS_API_KEY=${AUDNEXUS_API_KEY}
+      - LOG_LEVEL=info
+      - LOG_FILE=/app/logs/audiobook-tagger.log
+      - DEFAULT_OUTPUT_DIR=/app/output
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+      - ${AUDIOBOOK_PATH:-./audiobooks}:/audiobooks:ro
+    # No default command - container is meant to be used for CLI commands
+    stdin_open: true
+    tty: true
+    restart: unless-stopped

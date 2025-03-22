@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+logs
+output
+.git
+.github
+.vscode
+.env
+.env.local
+coverage
+tests
+*.md
+*.test.ts
+*.test.js

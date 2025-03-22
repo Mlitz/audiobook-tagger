@@ -10,14 +10,20 @@
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "docker:build": "docker build -t audiobook-tagger .",
+    "docker:run": "docker run -it --rm --env-file .env -v $(pwd)/logs:/app/logs -v $(pwd)/output:/app/output -v $(pwd)/audiobooks:/audiobooks:ro audiobook-tagger",
+    "docker:compose": "docker-compose up -d",
+    "docker:publish": "docker buildx build --platform linux/amd64,linux/arm64 -t yourusername/audiobook-tagger:latest --push ."
   },
   "keywords": [
     "audiobook",
     "metadata",
     "tagger",
     "plex",
-    "audnexus"
+    "audnexus",
+    "docker",
+    "unraid"
   ],
   "author": "",
   "license": "MIT",

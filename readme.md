@@ -13,6 +13,7 @@ Audiobook Tagger simplifies the process of managing your audiobook collection fo
 - Command-line interface for basic operations
 - Support for M4B and MP3 audiobook files
 - Comprehensive logging
+- Docker support for easy deployment on NAS systems like Unraid
 
 ## Installation
 
@@ -36,7 +37,7 @@ Audiobook Tagger simplifies the process of managing your audiobook collection fo
 
 3. Create a `.env` file based on the example:
    ```
-   cp .env.example .env
+   cp .env-example .env
    ```
 
 4. Edit the `.env` file with your settings, particularly your Audnexus API key.
@@ -73,6 +74,50 @@ For more options:
 ```
 npm start -- --help
 ```
+
+## Docker
+
+### Building the Docker Image
+
+```bash
+npm run docker:build
+```
+
+### Running with Docker
+
+```bash
+# Run interactively
+npm run docker:run -- tag --file /audiobooks/mybook.m4b
+
+# Or directly with docker
+docker run -it --rm \
+  -v /path/to/audiobooks:/audiobooks:ro \
+  -v /path/to/output:/app/output \
+  -v /path/to/logs:/app/logs \
+  -e AUDNEXUS_API_KEY=your_api_key \
+  yourusername/audiobook-tagger tag --file /audiobooks/mybook.m4b
+```
+
+### Using Docker Compose
+
+1. Create a `.env` file with your configurations
+2. Run:
+```bash
+npm run docker:compose
+```
+
+## Unraid Installation
+
+1. Go to the "Docker" tab in your Unraid interface
+2. Click "Add Container"
+3. In the "Template repositories" section, add:
+   ```
+   https://raw.githubusercontent.com/yourusername/audiobook-tagger/main/templates/audiobook-tagger.xml
+   ```
+4. Click "Save"
+5. Find "Audiobook Tagger" in the template list and click "Apply"
+6. Configure the container paths and settings
+7. Click "Apply"
 
 ## Development
 
