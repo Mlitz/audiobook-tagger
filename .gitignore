@@ -38,3 +38,6 @@ tmp/
 *.vsidx
 *.suo
 *.user
+
+#test files
+test/
