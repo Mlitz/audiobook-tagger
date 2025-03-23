@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>audiobook-tagger</Name>
-  <Repository>ghcr.io/mlitz/audiobook-tagger</Repository>
-  <Registry>https://ghcr.io</Registry>
+  <Repository>mlitz/audiobook-tagger</Repository>
+  <Registry>https://hub.docker.com/r/mlitz/audiobook-tagger</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
   <Support>https://github.com/mlitz/audiobook-tagger/issues</Support>
