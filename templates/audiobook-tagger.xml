@@ -16,6 +16,7 @@
   <Config Name="Audiobooks Path" Target="/audiobooks" Default="" Mode="ro" Description="Path to your audiobooks directory" Type="Path" Required="true" />
   <Config Name="Output Path" Target="/app/output" Default="" Mode="rw" Description="Path where organized audiobooks will be stored" Type="Path" Required="true" />
   <Config Name="Logs Path" Target="/app/logs" Default="" Mode="rw" Description="Path for log files" Type="Path" Required="true" />
+  <Config Name="Configuration File" Target="/app/.env" Default="/mnt/user/appdata/audiobook-tagger/config/.env" Mode="rw" Description="Path to .env configuration file" Type="Path" Required="true" />
   <Config Name="Audnexus API Key" Target="AUDNEXUS_API_KEY" Default="" Mode="" Description="Your Audnexus API key" Type="Variable" Required="false" />
   <Config Name="Log Level" Target="LOG_LEVEL" Default="info" Mode="" Description="Log level (debug, info, warn, error)" Type="Variable" Required="false" />
 </Container>

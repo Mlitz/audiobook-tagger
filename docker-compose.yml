@@ -13,6 +13,7 @@ services:
       - DEFAULT_OUTPUT_DIR=/app/output
     volumes:
       - ./logs:/app/logs
+      - ./appdata/audiobook-tagger/config/.env:/app/.env
       - ./output:/app/output
       - ${AUDIOBOOK_PATH:-./audiobooks}:/audiobooks:ro
     # No default command - container is meant to be used for CLI commands
