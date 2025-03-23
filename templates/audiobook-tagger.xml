@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>audiobook-tagger</Name>
-  <Repository>yourusername/audiobook-tagger</Repository>
-  <Registry>https://hub.docker.com/r/yourusername/audiobook-tagger</Registry>
+  <Repository>ghcr.io/mlitz/audiobook-tagger</Repository>
+  <Registry>https://ghcr.io</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
-  <Support>https://github.com/yourusername/audiobook-tagger/issues</Support>
-  <Project>https://github.com/yourusername/audiobook-tagger</Project>
+  <Support>https://github.com/mlitz/audiobook-tagger/issues</Support>
+  <Project>https://github.com/mlitz/audiobook-tagger</Project>
   <Overview>Audiobook Tagger is a program that tags audiobooks using the Audnexus API and organizes them according to Plex file and folder structure conventions.</Overview>
   <Category>MediaApp:Other</Category>
   <WebUI></WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/yourusername/audiobook-tagger/main/templates/audiobook-tagger.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/yourusername/audiobook-tagger/main/templates/audiobook-tagger-icon.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/mlitz/audiobook-tagger/main/templates/audiobook-tagger.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/mlitz/audiobook-tagger/main/templates/audiobook-tagger-icon.png</Icon>
   
   <Config Name="Audiobooks Path" Target="/audiobooks" Default="" Mode="ro" Description="Path to your audiobooks directory" Type="Path" Required="true" />
   <Config Name="Output Path" Target="/app/output" Default="" Mode="rw" Description="Path where organized audiobooks will be stored" Type="Path" Required="true" />
