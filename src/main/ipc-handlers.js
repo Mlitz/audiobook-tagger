@@ -1,7 +1,8 @@
-const { ipcMain } = require('electron');
+const { ipcMain, dialog } = require('electron');
 const { getAppState } = require('./app');
 const { logger } = require('../core/utils/logger');
 const { getConfig, updateConfig } = require('../core/config');
+const path = require('path');
 
 // Set up IPC handlers for renderer process communication
 function setupIpcHandlers() {
@@ -131,32 +132,203 @@ function setupIpcHandlers() {
         }
     });
 
-    // Application status
-    ipcMain.handle('app:status-async', async () => {
-        const state = getAppState();
-        return {
-            initialized: state.initialized,
-            version: process.env.APP_VERSION || '0.1.0'
-        };
-    });
+    // Filesystem related handlers
 
-    // Handle log messages from renderer
-    ipcMain.on('log:message', (event, data) => {
-        const { level, message, meta } = data;
-        if (logger[level]) {
-            logger[level](message, meta || {});
-        } else {
-            logger.info(message, meta || {});
+    // Handle directory selection
+    ipcMain.handle('filesystem:select-directory', async () => {
+        try {
+            const result = await dialog.showOpenDialog({
+                properties: ['openDirectory']
+            });
+
+            if (result.canceled) {
+                return { success: false, canceled: true };
+            }
+
+            return {
+                success: true,
+                dirPath: result.filePaths[0]
+            };
+        } catch (error) {
+            logger.error('Error selecting directory', { error });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'DIRECTORY_SELECTION_ERROR'
+                }
+            };
         }
     });
 
-    // Listen for preload ready event
-    ipcMain.on('preload:ready', () => {
-        logger.info('Preload script loaded successfully');
+    // Handle directory scanning
+    ipcMain.handle('filesystem:scan-directory', async (event, data) => {
+        try {
+            logger.info('Received scan directory request', { dirPath: data.dirPath });
+
+            const { filesystem } = getAppState().services;
+
+            if (!filesystem || !filesystem.fileScanner) {
+                throw new Error('Filesystem services not available');
+            }
+
+            const options = data.options || {};
+            const results = await filesystem.fileScanner.scanDirectory(data.dirPath, options);
+
+            return {
+                success: true,
+                dirPath: data.dirPath,
+                files: results,
+                count: results.length
+            };
+        } catch (error) {
+            logger.error('Error scanning directory', { error, data });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'SCAN_ERROR'
+                }
+            };
+        }
     });
-}
 
-// Call setup immediately
-setupIpcHandlers();
+    // Handle file processing
+    ipcMain.handle('filesystem:process-file', async (event, data) => {
+        try {
+            logger.info('Received process file request', { filePath: data.filePath });
 
-module.exports = { setupIpcHandlers };
+            const { fileProcessor } = getAppState().services;
+
+            if (!fileProcessor) {
+                throw new Error('File processor service not available');
+            }
+
+            const options = data.options || {};
+            const result = await fileProcessor.processFile(data.filePath, options);
+
+            return {
+                success: true,
+                result
+            };
+        } catch (error) {
+            logger.error('Error processing file', { error, data });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'PROCESSING_ERROR'
+                }
+            };
+        }
+    });
+
+    // Handle batch file processing
+    ipcMain.handle('filesystem:process-directory', async (event, data) => {
+        try {
+            logger.info('Received process directory request', { dirPath: data.dirPath });
+
+            const { fileProcessor } = getAppState().services;
+
+            if (!fileProcessor) {
+                throw new Error('File processor service not available');
+            }
+
+            const options = data.options || {};
+            const results = await fileProcessor.processDirectory(data.dirPath, options);
+
+            return {
+                success: true,
+                results
+            };
+        } catch (error) {
+            logger.error('Error processing directory', { error, data });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'DIRECTORY_PROCESSING_ERROR'
+                }
+            };
+        }
+    });
+
+    // Handle file metadata extraction
+    ipcMain.handle('filesystem:extract-metadata', async (event, data) => {
+        try {
+            logger.info('Received extract metadata request', { filePath: data.filePath });
+
+            const { extractMetadata } = require('../core/filesystem/metadata-extractor');
+
+            const metadata = await extractMetadata(data.filePath);
+
+            return {
+                success: true,
+                metadata
+            };
+        } catch (error) {
+            logger.error('Error extracting metadata', { error, data });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'METADATA_EXTRACTION_ERROR'
+                }
+            };
+        }
+    });
+
+    // Handle get processing queue status
+    ipcMain.handle('filesystem:queue-status', async () => {
+        try {
+            const { fileProcessor } = getAppState().services;
+
+            if (!fileProcessor) {
+                throw new Error('File processor service not available');
+            }
+
+            const status = fileProcessor.getQueueStatus();
+
+            return {
+                success: true,
+                status
+            };
+        } catch (error) {
+            logger.error('Error getting queue status', { error });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'QUEUE_STATUS_ERROR'
+                }
+            };
+        }
+    });
+
+    // Handle clear processing queue
+    ipcMain.handle('filesystem:clear-queue', async (event, data) => {
+        try {
+            const { fileProcessor } = getAppState().services;
+
+            if (!fileProcessor) {
+                throw new Error('File processor service not available');
+            }
+
+            const reason = data?.reason || 'User requested';
+            const count = fileProcessor.clearQueue(reason);
+
+            return {
+                success: true,
+                cleared: count
+            };
+        } catch (error) {
+            logger.error('Error clearing queue', { error });
+            return {
+                success: false,
+                error: {
+                    message: error.message,
+                    code: 'QUEUE_CLEAR_ERROR'
+                }
+            };
+        }
+    });

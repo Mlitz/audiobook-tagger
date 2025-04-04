@@ -164,6 +164,41 @@
                 margin-right: 15px;
                 margin-bottom: 5px;
             }
+
+        .file-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #252525;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .file-item {
+            padding: 5px;
+            font-size: 13px;
+            border-bottom: 1px solid #333;
+        }
+
+            .file-item:last-child {
+                border-bottom: none;
+            }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #3a3a3a;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #3A7BDB;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -189,133 +224,306 @@
                 <div id="result"></div>
             </div>
         </div>
+
+        <div class="card">
+            <h2>File System Scanner</h2>
+            <div class="input-group">
+                <input type="text"
+                       id="dir-path"
+                       placeholder="Directory path"
+                       readonly>
+                <button id="browse-btn">Browse</button>
+            </div>
+            <div class="input-group">
+                <button id="scan-btn" disabled>Scan Directory</button>
+                <button id="process-btn" disabled>Process Files</button>
+            </div>
+            <div class="status" id="fs-status-message"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+
+            <div id="file-list-container" style="display: none;">
+                <h3>Found Audiobooks: <span id="file-count">0</span></h3>
+                <div class="file-list" id="file-list"></div>
+            </div>
+
+            <div id="process-results-container" style="display: none;">
+                <h3>Processing Results</h3>
+                <div id="process-results"></div>
+            </div>
+        </div>
     </div>
 
-    <script>// When document is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      // Display app version
-      document.getElementById('app-version').textContent = window.appInfo.version;
+    <script>
+        // API Test functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            // Display app version
+            document.getElementById('app-version').textContent = window.appInfo.version;
 
-      // Setup event listeners
-      const asinInput = document.getElementById('asin-input');
-      const lookupBtn = document.getElementById('lookup-btn');
-      const statusMessage = document.getElementById('status-message');
-      const resultContainer = document.getElementById('result-container');
-      const resultDisplay = document.getElementById('result');
-      const metadataDisplay = document.getElementById('metadata-display');
+            // Setup event listeners for API test
+            setupApiTest();
 
-      // Handle lookup button click
-      lookupBtn.addEventListener('click', async () => {
-        const asin = asinInput.value.trim();
-        if (!asin) {
-          displayStatus('Please enter an ASIN', 'error');
-          return;
+            // Setup event listeners for filesystem scanner
+            setupFilesystemScanner();
+        });
+
+        function setupApiTest() {
+            const asinInput = document.getElementById('asin-input');
+            const lookupBtn = document.getElementById('lookup-btn');
+            const statusMessage = document.getElementById('status-message');
+            const resultContainer = document.getElementById('result-container');
+            const resultDisplay = document.getElementById('result');
+            const metadataDisplay = document.getElementById('metadata-display');
+
+            // Handle lookup button click
+            lookupBtn.addEventListener('click', async () => {
+                const asin = asinInput.value.trim();
+                if (!asin) {
+                    displayStatus('Please enter an ASIN', 'error', statusMessage);
+                    return;
+                }
+
+                // Clear previous results
+                resultDisplay.innerHTML = '';
+                metadataDisplay.innerHTML = '';
+                resultContainer.style.display = 'none';
+
+                // Show loading status
+                displayStatus('Looking up metadata...', 'warning', statusMessage);
+
+                try {
+                    // Call the API through the preload bridge
+                    const response = await window.api.invoke('metadata:lookup-async', { asin });
+
+                    if (!response.success) {
+                        throw new Error(response.error?.message || 'Failed to lookup metadata');
+                    }
+
+                    // Display the result
+                    displayStatus('Metadata retrieved successfully', 'success', statusMessage);
+                    resultContainer.style.display = 'block';
+
+                    // Display formatted metadata
+                    displayMetadata(response.result, metadataDisplay);
+
+                    // Also show the raw data
+                    resultDisplay.innerHTML = `<pre>${JSON.stringify(response.result, null, 2)}</pre>`;
+                } catch (error) {
+                    displayStatus(`Error: ${error.message}`, 'error', statusMessage);
+                    console.error('Lookup error:', error);
+                }
+            });
         }
 
-        // Clear previous results
-        resultDisplay.innerHTML = '';
-        metadataDisplay.innerHTML = '';
-        resultContainer.style.display = 'none';
+        function setupFilesystemScanner() {
+            const dirPathInput = document.getElementById('dir-path');
+            const browseBtn = document.getElementById('browse-btn');
+            const scanBtn = document.getElementById('scan-btn');
+            const processBtn = document.getElementById('process-btn');
+            const statusMessage = document.getElementById('fs-status-message');
+            const fileListContainer = document.getElementById('file-list-container');
+            const fileList = document.getElementById('file-list');
+            const fileCount = document.getElementById('file-count');
+            const progressFill = document.getElementById('progress-fill');
+            const processResultsContainer = document.getElementById('process-results-container');
+            const processResults = document.getElementById('process-results');
 
-        // Show loading status
-        displayStatus('Looking up metadata...', 'warning');
+            let scannedFiles = [];
 
-        try {
-          // Call the API through the preload bridge
-          const response = await window.api.invoke('metadata:lookup-async', { asin });
+            // Handle browse button click
+            browseBtn.addEventListener('click', async () => {
+                try {
+                    const result = await window.api.invoke('filesystem:select-directory');
 
-          if (!response.success) {
-            throw new Error(response.error?.message || 'Failed to lookup metadata');
-          }
+                    if (result.success && !result.canceled) {
+                        dirPathInput.value = result.dirPath;
+                        scanBtn.disabled = false;
+                        displayStatus('Directory selected. Click "Scan Directory" to scan for audiobooks.', '', statusMessage);
+                    }
+                } catch (error) {
+                    displayStatus(`Error selecting directory: ${error.message}`, 'error', statusMessage);
+                }
+            });
 
-          // Display the result
-          displayStatus('Metadata retrieved successfully', 'success');
-          resultContainer.style.display = 'block';
+            // Handle scan button click
+            scanBtn.addEventListener('click', async () => {
+                const dirPath = dirPathInput.value.trim();
+                if (!dirPath) {
+                    displayStatus('Please select a directory', 'error', statusMessage);
+                    return;
+                }
 
-          // Display formatted metadata
-          displayMetadata(response.result);
+                // Reset UI elements
+                fileList.innerHTML = '';
+                fileCount.textContent = '0';
+                fileListContainer.style.display = 'none';
+                processBtn.disabled = true;
+                processResultsContainer.style.display = 'none';
+                progressFill.style.width = '0%';
 
-          // Also show the raw data
-          resultDisplay.innerHTML = `<pre>${JSON.stringify(response.result, null, 2)}</pre>`;
-        } catch (error) {
-          displayStatus(`Error: ${error.message}`, 'error');
-          console.error('Lookup error:', error);
+                // Show loading status
+                displayStatus('Scanning directory for audiobooks...', 'warning', statusMessage);
+
+                try {
+                    // Call the filesystem scanner
+                    const response = await window.api.invoke('filesystem:scan-directory', {
+                        dirPath,
+                        options: {
+                            recursive: true
+                        }
+                    });
+
+                    if (!response.success) {
+                        throw new Error(response.error?.message || 'Failed to scan directory');
+                    }
+
+                    // Store scanned files
+                    scannedFiles = response.files;
+
+                    // Update UI with results
+                    displayStatus(`Found ${response.count} audiobook files`, 'success', statusMessage);
+                    fileCount.textContent = response.count;
+
+                    // Display file list if files were found
+                    if (response.count > 0) {
+                        fileListContainer.style.display = 'block';
+                        processBtn.disabled = false;
+
+                        // Display files in the list
+                        response.files.forEach(file => {
+                            const fileItem = document.createElement('div');
+                            fileItem.className = 'file-item';
+                            fileItem.textContent = file.path;
+                            fileList.appendChild(fileItem);
+                        });
+
+                        progressFill.style.width = '100%';
+                    } else {
+                        fileListContainer.style.display = 'none';
+                    }
+                } catch (error) {
+                    displayStatus(`Error scanning directory: ${error.message}`, 'error', statusMessage);
+                    console.error('Scan error:', error);
+                }
+            });
+
+            // Handle process button click
+            processBtn.addEventListener('click', async () => {
+                const dirPath = dirPathInput.value.trim();
+                if (!dirPath) {
+                    displayStatus('Please select a directory', 'error', statusMessage);
+                    return;
+                }
+
+                // Reset process results
+                processResults.innerHTML = '';
+                processResultsContainer.style.display = 'none';
+                progressFill.style.width = '0%';
+
+                // Show loading status
+                displayStatus('Processing audiobook files...', 'warning', statusMessage);
+
+                try {
+                    // Call the file processor
+                    const response = await window.api.invoke('filesystem:process-directory', {
+                        dirPath,
+                        options: {}
+                    });
+
+                    if (!response.success) {
+                        throw new Error(response.error?.message || 'Failed to process directory');
+                    }
+
+                    // Update UI with results
+                    const results = response.results;
+                    displayStatus(`Processed ${results.processed} books, ${results.failed} failed, ${results.skipped} skipped`,
+                        'success', statusMessage);
+
+                    // Display processing results
+                    processResultsContainer.style.display = 'block';
+                    processResults.innerHTML = `<pre>${JSON.stringify(results, null, 2)}</pre>`;
+
+                    progressFill.style.width = '100%';
+                } catch (error) {
+                    displayStatus(`Error processing files: ${error.message}`, 'error', statusMessage);
+                    console.error('Processing error:', error);
+                }
+            });
         }
-      });
 
-      // Function to display status messages
-      function displayStatus(message, type = '') {
-        statusMessage.textContent = message;
-        statusMessage.className = 'status';
-        if (type) {
-          statusMessage.classList.add(type);
+        // Helper functions
+
+        function displayStatus(message, type, statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = 'status';
+            if (type) {
+                statusElement.classList.add(type);
+            }
         }
-      }
 
-      // Function to display formatted metadata
-      function displayMetadata(metadata) {
-        if (!metadata) return;
+        function displayMetadata(metadata, container) {
+            if (!metadata) return;
 
-        const html = `
-          <div class="metadata-card">
-            <div class="cover-container">
-              ${metadata.coverUrl ?
-                `<img src="${metadata.coverUrl}" alt="Cover">` :
-                '<div style="color:#666;">No Cover</div>'}
-            </div>
-            <div class="metadata-content">
-              <h3 class="metadata-title">${metadata.title || 'Unknown Title'}</h3>
-              <p class="metadata-author">
-                By ${formatAuthors(metadata.authors)} |
-                Narrated by ${formatNarrators(metadata.narrators)}
-              </p>
-              <div class="metadata-info">
-                ${metadata.series ?
-                  `<div>Series: ${metadata.series.name} #${metadata.series.position}</div>` : ''}
-                ${metadata.duration ?
-                  `<div>Runtime: ${formatDuration(metadata.duration)}</div>` : ''}
-                ${metadata.releaseDate ?
-                  `<div>Released: ${formatDate(metadata.releaseDate)}</div>` : ''}
-                ${metadata.publisherName ?
-                  `<div>Publisher: ${metadata.publisherName}</div>` : ''}
-                <div>ASIN: ${metadata.asin}</div>
+            const html = `
+            <div class="metadata-card">
+              <div class="cover-container">
+                ${metadata.coverUrl ?
+                    `<img src="${metadata.coverUrl}" alt="Cover">` :
+                    '<div style="color:#666;">No Cover</div>'}
+              </div>
+              <div class="metadata-content">
+                <h3 class="metadata-title">${metadata.title || 'Unknown Title'}</h3>
+                <p class="metadata-author">
+                  By ${formatAuthors(metadata.authors)} |
+                  Narrated by ${formatNarrators(metadata.narrators)}
+                </p>
+                <div class="metadata-info">
+                  ${metadata.series ?
+                    `<div>Series: ${metadata.series.name} #${metadata.series.position}</div>` : ''}
+                  ${metadata.duration ?
+                    `<div>Runtime: ${formatDuration(metadata.duration)}</div>` : ''}
+                  ${metadata.releaseDate ?
+                    `<div>Released: ${formatDate(metadata.releaseDate)}</div>` : ''}
+                  ${metadata.publisherName ?
+                    `<div>Publisher: ${metadata.publisherName}</div>` : ''}
+                  <div>ASIN: ${metadata.asin}</div>
+                </div>
               </div>
             </div>
-          </div>
-        `;
+          `;
 
-        metadataDisplay.innerHTML = html;
-      }
-
-      // Helper functions for formatting metadata
-      function formatAuthors(authors) {
-        if (!authors || !authors.length) return 'Unknown';
-        return authors.map(a => a.name).join(', ');
-      }
-
-      function formatNarrators(narrators) {
-        if (!narrators || !narrators.length) return 'Unknown';
-        return narrators.map(n => n.name).join(', ');
-      }
-
-      function formatDuration(minutes) {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return `${hours} hr${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
-      }
-
-      function formatDate(dateString) {
-        try {
-          const date = new Date(dateString);
-          return date.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-        } catch (e) {
-          return dateString;
+            container.innerHTML = html;
         }
-      }
-    });</script>
+
+        function formatAuthors(authors) {
+            if (!authors || !authors.length) return 'Unknown';
+            return authors.map(a => a.name).join(', ');
+        }
+
+        function formatNarrators(narrators) {
+            if (!narrators || !narrators.length) return 'Unknown';
+            return narrators.map(n => n.name).join(', ');
+        }
+
+        function formatDuration(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours} hr${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
+        }
+
+        function formatDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+    </script>
 </body>
 </html>

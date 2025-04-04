@@ -5,6 +5,8 @@ const { loadConfig } = require('../core/config');
 const { initializeAudnexusClient } = require('../api/audnexus');
 const { initializeEventSystem } = require('../core/events');
 const { initializeMetadataProcessor } = require('../core/metadata');
+const { initializeFilesystem } = require('../core/filesystem');
+const { initializeFileProcessor } = require('../core/filesystem/processor');
 const { logger } = require('../core/utils/logger');
 
 // Application state
@@ -52,6 +54,28 @@ async function initializeApp() {
         });
         appState.services.metadata = metadataProcessor;
         logger.info('Metadata processor initialized');
+
+        // Initialize filesystem services
+        const filesystemServices = initializeFilesystem({
+            config: config.filesystem,
+            eventSystem
+        });
+
+        appState.services.filesystem = filesystemServices;
+        logger.info('Filesystem services initialized');
+
+        // Initialize file processor
+        const fileProcessor = initializeFileProcessor({
+            fileSystemService: filesystemServices.fileSystemService,
+            fileScanner: filesystemServices.fileScanner,
+            fileOrganizer: filesystemServices.fileOrganizer,
+            metadataProcessor,
+            eventSystem,
+            config: config.processing
+        });
+
+        appState.services.fileProcessor = fileProcessor;
+        logger.info('File processor initialized');
 
         // Mark as initialized
         appState.initialized = true;
