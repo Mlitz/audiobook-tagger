@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audiobook Tagger</title>
     <style>
+        /* Base styling */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             background-color: #1E1E1E;
             color: #E0E0E0;
             margin: 0;
             padding: 20px;
+            line-height: 1.6;
         }
 
         .container {
@@ -18,512 +20,147 @@
             margin: 0 auto;
         }
 
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #333;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .version {
-            font-size: 12px;
-            color: #999;
-        }
-
+        /* Card styling */
         .card {
             background-color: #2D2D2D;
             border-radius: 6px;
             padding: 20px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
             .card h2 {
                 margin-top: 0;
                 margin-bottom: 15px;
-                font-size: 18px;
+                color: #3A7BDB;
+                border-bottom: 1px solid #333;
+                padding-bottom: 10px;
             }
 
-        input, button {
+        /* Progress bar */
+        .progress-container {
             background-color: #3A3A3A;
-            border: 1px solid #555;
-            color: #E0E0E0;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        input {
-            width: 300px;
-            margin-right: 10px;
-        }
-
-        button {
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-            button:hover {
-                background-color: #4A4A4A;
-            }
-
-            button:active {
-                background-color: #3A7BDB;
-            }
-
-        .input-group {
-            display: flex;
-            margin-bottom: 10px;
-        }
-
-        .status {
+            border-radius: 5px;
+            height: 20px;
             margin-top: 10px;
-            font-size: 14px;
-        }
-
-        .error {
-            color: #F44336;
-        }
-
-        .success {
-            color: #4CAF50;
-        }
-
-        .warning {
-            color: #FFC107;
-        }
-
-        #result {
-            margin-top: 20px;
-            overflow: auto;
-            max-height: 400px;
-        }
-
-        pre {
-            background-color: #252525;
-            padding: 10px;
-            border-radius: 4px;
-            overflow: auto;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 13px;
-        }
-
-        .metadata-card {
-            display: flex;
-            margin-bottom: 20px;
-            background-color: #2D2D2D;
-            border-radius: 6px;
             overflow: hidden;
         }
-
-        .cover-container {
-            width: 150px;
-            min-width: 150px;
-            height: 150px;
-            background-color: #222;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-            .cover-container img {
-                max-width: 100%;
-                max-height: 100%;
-            }
-
-        .metadata-content {
-            padding: 15px;
-            flex-grow: 1;
-        }
-
-        .metadata-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 0 0 5px 0;
-        }
-
-        .metadata-author {
-            font-size: 14px;
-            margin: 0 0 10px 0;
-        }
-
-        .metadata-info {
-            font-size: 13px;
-            color: #B0B0B0;
-            display: flex;
-            flex-wrap: wrap;
-        }
-
-            .metadata-info div {
-                margin-right: 15px;
-                margin-bottom: 5px;
-            }
-
-        .file-list {
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: #252525;
-            border-radius: 4px;
-            padding: 10px;
-        }
-
-        .file-item {
-            padding: 5px;
-            font-size: 13px;
-            border-bottom: 1px solid #333;
-        }
-
-            .file-item:last-child {
-                border-bottom: none;
-            }
 
         .progress-bar {
-            width: 100%;
-            height: 10px;
-            background-color: #3a3a3a;
-            border-radius: 5px;
-            margin-top: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
+            width: 0%;
             height: 100%;
             background-color: #3A7BDB;
-            width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease-in-out;
         }
+
+        /* Status messages */
+        .status-message {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #B0B0B0;
+        }
+
+        /* Error notification */
+        .error-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #F44336;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+            .error-notification h3 {
+                margin-top: 0;
+                margin-bottom: 10px;
+            }
+
+            .error-notification .close-notification {
+                background: none;
+                border: 1px solid white;
+                color: white;
+                padding: 5px 10px;
+                border-radius: 3px;
+                cursor: pointer;
+            }
+
+        /* Buttons */
+        .btn {
+            background-color: #3A7BDB;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+            .btn:hover {
+                background-color: #4A8AEC;
+            }
+
+            .btn:disabled {
+                background-color: #555;
+                cursor: not-allowed;
+            }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Audiobook Tagger</h1>
-            <div class="version">v<span id="app-version">0.1.0</span></div>
         </header>
 
+        <!-- Filesystem Scanning Section -->
         <div class="card">
-            <h2>API Test</h2>
-            <div class="input-group">
-                <input type="text"
-                       id="asin-input"
-                       placeholder="Enter ASIN (e.g., B0BCKSQ2CK)"
-                       value="B0BCKSQ2CK">
-                <button id="lookup-btn">Lookup</button>
-            </div>
-            <div class="status" id="status-message"></div>
+            <h2>Filesystem Scanner</h2>
 
-            <div id="result-container" style="display: none;">
-                <div id="metadata-display"></div>
-                <div id="result"></div>
+            <div class="input-group">
+                <input type="text" id="directory-path" placeholder="Select directory" readonly>
+                <button id="browse-btn" class="btn">Browse</button>
+                <button id="scan-btn" class="btn" disabled>Scan Directory</button>
             </div>
+
+            <div class="progress-container">
+                <div id="filesystem-progress-bar" class="progress-bar"></div>
+            </div>
+
+            <div id="filesystem-status" class="status-message"></div>
         </div>
 
+        <!-- File Processing Section -->
         <div class="card">
-            <h2>File System Scanner</h2>
-            <div class="input-group">
-                <input type="text"
-                       id="dir-path"
-                       placeholder="Directory path"
-                       readonly>
-                <button id="browse-btn">Browse</button>
-            </div>
-            <div class="input-group">
-                <button id="scan-btn" disabled>Scan Directory</button>
-                <button id="process-btn" disabled>Process Files</button>
-            </div>
-            <div class="status" id="fs-status-message"></div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-fill"></div>
+            <h2>File Processing</h2>
+
+            <button id="process-btn" class="btn" disabled>Process Files</button>
+
+            <div class="progress-container">
+                <div id="processing-progress-bar" class="progress-bar"></div>
             </div>
 
-            <div id="file-list-container" style="display: none;">
-                <h3>Found Audiobooks: <span id="file-count">0</span></h3>
-                <div class="file-list" id="file-list"></div>
+            <div id="processing-status" class="status-message"></div>
+
+            <div id="processing-summary"></div>
+        </div>
+
+        <!-- Metadata Search Section -->
+        <div class="card">
+            <h2>Metadata Search</h2>
+
+            <div class="input-group">
+                <input type="text" id="metadata-search-input" placeholder="Search book title or author">
+                <button id="metadata-search-btn" class="btn">Search</button>
             </div>
 
-            <div id="process-results-container" style="display: none;">
-                <h3>Processing Results</h3>
-                <div id="process-results"></div>
-            </div>
+            <div id="metadata-search-status" class="status-message"></div>
+
+            <div id="metadata-results"></div>
         </div>
     </div>
 
-    <script>
-        // API Test functionality
-        document.addEventListener('DOMContentLoaded', () => {
-            // Display app version
-            document.getElementById('app-version').textContent = window.appInfo.version;
-
-            // Setup event listeners for API test
-            setupApiTest();
-
-            // Setup event listeners for filesystem scanner
-            setupFilesystemScanner();
-        });
-
-        function setupApiTest() {
-            const asinInput = document.getElementById('asin-input');
-            const lookupBtn = document.getElementById('lookup-btn');
-            const statusMessage = document.getElementById('status-message');
-            const resultContainer = document.getElementById('result-container');
-            const resultDisplay = document.getElementById('result');
-            const metadataDisplay = document.getElementById('metadata-display');
-
-            // Handle lookup button click
-            lookupBtn.addEventListener('click', async () => {
-                const asin = asinInput.value.trim();
-                if (!asin) {
-                    displayStatus('Please enter an ASIN', 'error', statusMessage);
-                    return;
-                }
-
-                // Clear previous results
-                resultDisplay.innerHTML = '';
-                metadataDisplay.innerHTML = '';
-                resultContainer.style.display = 'none';
-
-                // Show loading status
-                displayStatus('Looking up metadata...', 'warning', statusMessage);
-
-                try {
-                    // Call the API through the preload bridge
-                    const response = await window.api.invoke('metadata:lookup-async', { asin });
-
-                    if (!response.success) {
-                        throw new Error(response.error?.message || 'Failed to lookup metadata');
-                    }
-
-                    // Display the result
-                    displayStatus('Metadata retrieved successfully', 'success', statusMessage);
-                    resultContainer.style.display = 'block';
-
-                    // Display formatted metadata
-                    displayMetadata(response.result, metadataDisplay);
-
-                    // Also show the raw data
-                    resultDisplay.innerHTML = `<pre>${JSON.stringify(response.result, null, 2)}</pre>`;
-                } catch (error) {
-                    displayStatus(`Error: ${error.message}`, 'error', statusMessage);
-                    console.error('Lookup error:', error);
-                }
-            });
-        }
-
-        function setupFilesystemScanner() {
-            const dirPathInput = document.getElementById('dir-path');
-            const browseBtn = document.getElementById('browse-btn');
-            const scanBtn = document.getElementById('scan-btn');
-            const processBtn = document.getElementById('process-btn');
-            const statusMessage = document.getElementById('fs-status-message');
-            const fileListContainer = document.getElementById('file-list-container');
-            const fileList = document.getElementById('file-list');
-            const fileCount = document.getElementById('file-count');
-            const progressFill = document.getElementById('progress-fill');
-            const processResultsContainer = document.getElementById('process-results-container');
-            const processResults = document.getElementById('process-results');
-
-            let scannedFiles = [];
-
-            // Handle browse button click
-            browseBtn.addEventListener('click', async () => {
-                try {
-                    const result = await window.api.invoke('filesystem:select-directory');
-
-                    if (result.success && !result.canceled) {
-                        dirPathInput.value = result.dirPath;
-                        scanBtn.disabled = false;
-                        displayStatus('Directory selected. Click "Scan Directory" to scan for audiobooks.', '', statusMessage);
-                    }
-                } catch (error) {
-                    displayStatus(`Error selecting directory: ${error.message}`, 'error', statusMessage);
-                }
-            });
-
-            // Handle scan button click
-            scanBtn.addEventListener('click', async () => {
-                const dirPath = dirPathInput.value.trim();
-                if (!dirPath) {
-                    displayStatus('Please select a directory', 'error', statusMessage);
-                    return;
-                }
-
-                // Reset UI elements
-                fileList.innerHTML = '';
-                fileCount.textContent = '0';
-                fileListContainer.style.display = 'none';
-                processBtn.disabled = true;
-                processResultsContainer.style.display = 'none';
-                progressFill.style.width = '0%';
-
-                // Show loading status
-                displayStatus('Scanning directory for audiobooks...', 'warning', statusMessage);
-
-                try {
-                    // Call the filesystem scanner
-                    const response = await window.api.invoke('filesystem:scan-directory', {
-                        dirPath,
-                        options: {
-                            recursive: true
-                        }
-                    });
-
-                    if (!response.success) {
-                        throw new Error(response.error?.message || 'Failed to scan directory');
-                    }
-
-                    // Store scanned files
-                    scannedFiles = response.files;
-
-                    // Update UI with results
-                    displayStatus(`Found ${response.count} audiobook files`, 'success', statusMessage);
-                    fileCount.textContent = response.count;
-
-                    // Display file list if files were found
-                    if (response.count > 0) {
-                        fileListContainer.style.display = 'block';
-                        processBtn.disabled = false;
-
-                        // Display files in the list
-                        response.files.forEach(file => {
-                            const fileItem = document.createElement('div');
-                            fileItem.className = 'file-item';
-                            fileItem.textContent = file.path;
-                            fileList.appendChild(fileItem);
-                        });
-
-                        progressFill.style.width = '100%';
-                    } else {
-                        fileListContainer.style.display = 'none';
-                    }
-                } catch (error) {
-                    displayStatus(`Error scanning directory: ${error.message}`, 'error', statusMessage);
-                    console.error('Scan error:', error);
-                }
-            });
-
-            // Handle process button click
-            processBtn.addEventListener('click', async () => {
-                const dirPath = dirPathInput.value.trim();
-                if (!dirPath) {
-                    displayStatus('Please select a directory', 'error', statusMessage);
-                    return;
-                }
-
-                // Reset process results
-                processResults.innerHTML = '';
-                processResultsContainer.style.display = 'none';
-                progressFill.style.width = '0%';
-
-                // Show loading status
-                displayStatus('Processing audiobook files...', 'warning', statusMessage);
-
-                try {
-                    // Call the file processor
-                    const response = await window.api.invoke('filesystem:process-directory', {
-                        dirPath,
-                        options: {}
-                    });
-
-                    if (!response.success) {
-                        throw new Error(response.error?.message || 'Failed to process directory');
-                    }
-
-                    // Update UI with results
-                    const results = response.results;
-                    displayStatus(`Processed ${results.processed} books, ${results.failed} failed, ${results.skipped} skipped`,
-                        'success', statusMessage);
-
-                    // Display processing results
-                    processResultsContainer.style.display = 'block';
-                    processResults.innerHTML = `<pre>${JSON.stringify(results, null, 2)}</pre>`;
-
-                    progressFill.style.width = '100%';
-                } catch (error) {
-                    displayStatus(`Error processing files: ${error.message}`, 'error', statusMessage);
-                    console.error('Processing error:', error);
-                }
-            });
-        }
-
-        // Helper functions
-
-        function displayStatus(message, type, statusElement) {
-            statusElement.textContent = message;
-            statusElement.className = 'status';
-            if (type) {
-                statusElement.classList.add(type);
-            }
-        }
-
-        function displayMetadata(metadata, container) {
-            if (!metadata) return;
-
-            const html = `
-            <div class="metadata-card">
-              <div class="cover-container">
-                ${metadata.coverUrl ?
-                    `<img src="${metadata.coverUrl}" alt="Cover">` :
-                    '<div style="color:#666;">No Cover</div>'}
-              </div>
-              <div class="metadata-content">
-                <h3 class="metadata-title">${metadata.title || 'Unknown Title'}</h3>
-                <p class="metadata-author">
-                  By ${formatAuthors(metadata.authors)} |
-                  Narrated by ${formatNarrators(metadata.narrators)}
-                </p>
-                <div class="metadata-info">
-                  ${metadata.series ?
-                    `<div>Series: ${metadata.series.name} #${metadata.series.position}</div>` : ''}
-                  ${metadata.duration ?
-                    `<div>Runtime: ${formatDuration(metadata.duration)}</div>` : ''}
-                  ${metadata.releaseDate ?
-                    `<div>Released: ${formatDate(metadata.releaseDate)}</div>` : ''}
-                  ${metadata.publisherName ?
-                    `<div>Publisher: ${metadata.publisherName}</div>` : ''}
-                  <div>ASIN: ${metadata.asin}</div>
-                </div>
-              </div>
-            </div>
-          `;
-
-            container.innerHTML = html;
-        }
-
-        function formatAuthors(authors) {
-            if (!authors || !authors.length) return 'Unknown';
-            return authors.map(a => a.name).join(', ');
-        }
-
-        function formatNarrators(narrators) {
-            if (!narrators || !narrators.length) return 'Unknown';
-            return narrators.map(n => n.name).join(', ');
-        }
-
-        function formatDuration(minutes) {
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            return `${hours} hr${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
-        }
-
-        function formatDate(dateString) {
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleDateString(undefined, {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            } catch (e) {
-                return dateString;
-            }
-        }
-    </script>
+    <script src="index.js"></script>
 </body>
 </html>

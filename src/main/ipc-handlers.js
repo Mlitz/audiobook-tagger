@@ -4,176 +4,54 @@ const { logger } = require('../core/utils/logger');
 const { getConfig, updateConfig } = require('../core/config');
 const path = require('path');
 
-// Set up IPC handlers for renderer process communication
+/**
+ * Enhanced error response formatting
+ * @param {Error} error - Error object
+ * @returns {Object} - Formatted error response
+ */
+function formatErrorResponse(error) {
+    return {
+        message: error.message || 'An unknown error occurred',
+        code: error.code || 'UNKNOWN_ERROR',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    };
+}
+
+/**
+ * Set up comprehensive IPC handlers for renderer-main process communication
+ */
 function setupIpcHandlers() {
-    // Handle metadata lookup requests
-    ipcMain.on('metadata:lookup', async (event, data) => {
-        try {
-            logger.info('Received metadata lookup request', { data });
-            const { metadata } = getAppState().services;
-
-            // Process the lookup asynchronously
-            metadata.lookupByAsin(data.asin)
-                .then(result => {
-                    event.sender.send('metadata:result', {
-                        requestId: data.requestId,
-                        result
-                    });
-                })
-                .catch(error => {
-                    logger.error('Error during metadata lookup', { error, data });
-                    event.sender.send('metadata:error', {
-                        requestId: data.requestId,
-                        error: {
-                            message: error.message,
-                            code: error.code || 'UNKNOWN_ERROR'
-                        }
-                    });
-                });
-        } catch (error) {
-            logger.error('Error handling metadata lookup request', { error });
-            event.sender.send('metadata:error', {
-                requestId: data.requestId,
-                error: {
-                    message: 'Internal error processing request',
-                    code: 'INTERNAL_ERROR'
-                }
-            });
-        }
-    });
-
-    // Synchronous version using invoke pattern (returns Promise)
-    ipcMain.handle('metadata:lookup-async', async (event, data) => {
-        try {
-            logger.info('Received metadata lookup async request', { data });
-            const { metadata } = getAppState().services;
-
-            const result = await metadata.lookupByAsin(data.asin);
-            return { success: true, result };
-        } catch (error) {
-            logger.error('Error during metadata lookup async', { error, data });
-            return {
-                success: false,
-                error: {
-                    message: error.message,
-                    code: error.code || 'UNKNOWN_ERROR'
-                }
-            };
-        }
-    });
-
-    // Handle metadata search requests
-    ipcMain.on('metadata:search', async (event, data) => {
-        try {
-            logger.info('Received metadata search request', { data });
-            const { metadata } = getAppState().services;
-
-            metadata.search(data.query)
-                .then(results => {
-                    event.sender.send('metadata:result', {
-                        requestId: data.requestId,
-                        results
-                    });
-                })
-                .catch(error => {
-                    logger.error('Error during metadata search', { error, data });
-                    event.sender.send('metadata:error', {
-                        requestId: data.requestId,
-                        error: {
-                            message: error.message,
-                            code: error.code || 'UNKNOWN_ERROR'
-                        }
-                    });
-                });
-        } catch (error) {
-            logger.error('Error handling metadata search request', { error });
-            event.sender.send('metadata:error', {
-                requestId: data.requestId,
-                error: {
-                    message: 'Internal error processing request',
-                    code: 'INTERNAL_ERROR'
-                }
-            });
-        }
-    });
-
-    // Handle configuration requests
-    ipcMain.handle('config:get-async', async (event, key) => {
-        try {
-            const config = key ? getConfig(key) : getConfig();
-            return { success: true, config };
-        } catch (error) {
-            logger.error('Error retrieving configuration', { error, key });
-            return {
-                success: false,
-                error: {
-                    message: error.message,
-                    code: error.code || 'CONFIG_ERROR'
-                }
-            };
-        }
-    });
-
-    ipcMain.on('config:set', async (event, data) => {
-        try {
-            await updateConfig(data.key, data.value);
-            event.sender.send('config:updated', { key: data.key });
-            return true;
-        } catch (error) {
-            logger.error('Error updating configuration', { error, data });
-            event.sender.send('app:error', {
-                source: 'config',
-                error: {
-                    message: error.message,
-                    code: error.code || 'CONFIG_ERROR'
-                }
-            });
-            return false;
-        }
-    });
-
-    // Filesystem related handlers
-
-    // Handle directory selection
-    ipcMain.handle('filesystem:select-directory', async () => {
-        try {
-            const result = await dialog.showOpenDialog({
-                properties: ['openDirectory']
-            });
-
-            if (result.canceled) {
-                return { success: false, canceled: true };
-            }
-
-            return {
-                success: true,
-                dirPath: result.filePaths[0]
-            };
-        } catch (error) {
-            logger.error('Error selecting directory', { error });
-            return {
-                success: false,
-                error: {
-                    message: error.message,
-                    code: 'DIRECTORY_SELECTION_ERROR'
-                }
-            };
-        }
-    });
-
-    // Handle directory scanning
+    // Filesystem Scanning with Enhanced Progress Tracking
     ipcMain.handle('filesystem:scan-directory', async (event, data) => {
         try {
-            logger.info('Received scan directory request', { dirPath: data.dirPath });
-
             const { filesystem } = getAppState().services;
 
             if (!filesystem || !filesystem.fileScanner) {
                 throw new Error('Filesystem services not available');
             }
 
-            const options = data.options || {};
-            const results = await filesystem.fileScanner.scanDirectory(data.dirPath, options);
+            // Setup progress tracking
+            const progressHandler = (progressData) => {
+                event.sender.send('filesystem:scan:progress', progressData);
+            };
+
+            // Attach event listener for progress
+            if (filesystem.fileScanner.events) {
+                filesystem.fileScanner.events.on('SCAN_PROGRESS', progressHandler);
+            }
+
+            const results = await filesystem.fileScanner.scanDirectory(
+                data.dirPath,
+                {
+                    ...data.options,
+                    progressCallback: progressHandler
+                }
+            );
+
+            // Remove progress listener
+            if (filesystem.fileScanner.events) {
+                filesystem.fileScanner.events.removeListener('SCAN_PROGRESS', progressHandler);
+            }
 
             return {
                 success: true,
@@ -185,57 +63,51 @@ function setupIpcHandlers() {
             logger.error('Error scanning directory', { error, data });
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: 'SCAN_ERROR'
-                }
+                error: formatErrorResponse(error)
             };
         }
     });
 
-    // Handle file processing
-    ipcMain.handle('filesystem:process-file', async (event, data) => {
-        try {
-            logger.info('Received process file request', { filePath: data.filePath });
-
-            const { fileProcessor } = getAppState().services;
-
-            if (!fileProcessor) {
-                throw new Error('File processor service not available');
-            }
-
-            const options = data.options || {};
-            const result = await fileProcessor.processFile(data.filePath, options);
-
-            return {
-                success: true,
-                result
-            };
-        } catch (error) {
-            logger.error('Error processing file', { error, data });
-            return {
-                success: false,
-                error: {
-                    message: error.message,
-                    code: 'PROCESSING_ERROR'
-                }
-            };
-        }
-    });
-
-    // Handle batch file processing
+    // File Processing with Comprehensive Progress and Error Handling
     ipcMain.handle('filesystem:process-directory', async (event, data) => {
         try {
-            logger.info('Received process directory request', { dirPath: data.dirPath });
+            const { filesystem } = getAppState().services;
 
-            const { fileProcessor } = getAppState().services;
-
-            if (!fileProcessor) {
+            if (!filesystem || !filesystem.fileProcessor) {
                 throw new Error('File processor service not available');
             }
 
-            const options = data.options || {};
-            const results = await fileProcessor.processDirectory(data.dirPath, options);
+            // Setup progress tracking
+            const progressHandler = (progressData) => {
+                event.sender.send('filesystem:process:progress', {
+                    processed: progressData.processed,
+                    total: progressData.total,
+                    percentage: progressData.percentage,
+                    status: {
+                        success: progressData.success,
+                        failed: progressData.failed,
+                        skipped: progressData.skipped
+                    }
+                });
+            };
+
+            // Attach event listener for progress
+            if (filesystem.fileProcessor.events) {
+                filesystem.fileProcessor.events.on('BATCH_PROGRESS', progressHandler);
+            }
+
+            const results = await filesystem.fileProcessor.processDirectory(
+                data.dirPath,
+                {
+                    ...data.options,
+                    progressCallback: progressHandler
+                }
+            );
+
+            // Remove progress listener
+            if (filesystem.fileProcessor.events) {
+                filesystem.fileProcessor.events.removeListener('BATCH_PROGRESS', progressHandler);
+            }
 
             return {
                 success: true,
@@ -245,49 +117,55 @@ function setupIpcHandlers() {
             logger.error('Error processing directory', { error, data });
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: 'DIRECTORY_PROCESSING_ERROR'
-                }
+                error: formatErrorResponse(error)
             };
         }
     });
 
-    // Handle file metadata extraction
-    ipcMain.handle('filesystem:extract-metadata', async (event, data) => {
+    // Metadata Search with Enhanced Error Handling
+    ipcMain.handle('metadata:search', async (event, data) => {
         try {
-            logger.info('Received extract metadata request', { filePath: data.filePath });
+            const { metadata } = getAppState().services;
 
-            const { extractMetadata } = require('../core/filesystem/metadata-extractor');
+            if (!metadata) {
+                throw new Error('Metadata service not available');
+            }
 
-            const metadata = await extractMetadata(data.filePath);
+            // Setup progress tracking for search
+            const progressHandler = (progressData) => {
+                event.sender.send('metadata:search:progress', progressData);
+            };
+
+            const results = await metadata.search(
+                data.query,
+                {
+                    progressCallback: progressHandler
+                }
+            );
 
             return {
                 success: true,
-                metadata
+                results
             };
         } catch (error) {
-            logger.error('Error extracting metadata', { error, data });
+            logger.error('Error searching metadata', { error, data });
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: 'METADATA_EXTRACTION_ERROR'
-                }
+                error: formatErrorResponse(error)
             };
         }
     });
 
-    // Handle get processing queue status
+    // Queue Status Monitoring
     ipcMain.handle('filesystem:queue-status', async () => {
         try {
-            const { fileProcessor } = getAppState().services;
+            const { filesystem } = getAppState().services;
 
-            if (!fileProcessor) {
+            if (!filesystem || !filesystem.fileProcessor) {
                 throw new Error('File processor service not available');
             }
 
-            const status = fileProcessor.getQueueStatus();
+            const status = filesystem.fileProcessor.getQueueStatus();
 
             return {
                 success: true,
@@ -297,25 +175,22 @@ function setupIpcHandlers() {
             logger.error('Error getting queue status', { error });
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: 'QUEUE_STATUS_ERROR'
-                }
+                error: formatErrorResponse(error)
             };
         }
     });
 
-    // Handle clear processing queue
+    // Queue Cancellation
     ipcMain.handle('filesystem:clear-queue', async (event, data) => {
         try {
-            const { fileProcessor } = getAppState().services;
+            const { filesystem } = getAppState().services;
 
-            if (!fileProcessor) {
+            if (!filesystem || !filesystem.fileProcessor) {
                 throw new Error('File processor service not available');
             }
 
             const reason = data?.reason || 'User requested';
-            const count = fileProcessor.clearQueue(reason);
+            const count = filesystem.fileProcessor.clearQueue(reason);
 
             return {
                 success: true,
@@ -325,10 +200,12 @@ function setupIpcHandlers() {
             logger.error('Error clearing queue', { error });
             return {
                 success: false,
-                error: {
-                    message: error.message,
-                    code: 'QUEUE_CLEAR_ERROR'
-                }
+                error: formatErrorResponse(error)
             };
         }
     });
+}
+
+module.exports = {
+    setupIpcHandlers
+};

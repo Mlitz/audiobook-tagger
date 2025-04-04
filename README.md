@@ -1,89 +1,132 @@
-# Audiobook Tagger
+﻿# Audiobook Tagger - Testing Guide
 
-A specialized application designed to tag audiobooks using the Audnexus API and organize them according to Plex file and folder structure conventions.
+## Prerequisites
 
-## Features
+Before running tests, ensure you have:
+- Node.js (version 16+ recommended)
+- npm or Yarn installed
+- Project dependencies installed (`npm install`)
 
-- Metadata Retrieval: Automatically fetch rich metadata for your audiobooks
-- Efficient Tagging: Quickly tag multiple files with accurate metadata
-- Media Server Integration: Organize files according to Plex conventions
-- Audiobook-Specific Tags: Support for specialized audiobook metadata fields
-- Batch Processing: Process multiple files simultaneously
+## Running Tests
 
-## Development Status
+### Automated Tests
 
-This project is currently in Phase 1 of development, which focuses on establishing the core foundation and API integration.
-
-### Current Features (Phase 1)
-
-- Core application architecture
-- Audnexus API connectivity
-- Basic metadata retrieval mechanisms
-- Error handling and logging framework
-- Foundation for future development phases
-
-## Installation
-
-```
-# Clone the repository
-git clone https://github.com/yourusername/audiobook-tagger.git
-
-# Navigate to the project directory
-cd audiobook-tagger
-
-# Install dependencies
-npm install
-
-# Start the application in development mode
-npm run dev
-```
-
-## Building the Application
-
-```
-# Build for current platform
-npm run dist
-
-# Build for specific platforms
-npm run dist -- --mac
-npm run dist -- --win
-npm run dist -- --linux
-```
-
-## Development
-
-```
-# Run tests
+Run all tests using:
+```bash
 npm test
-
-# Lint code
-npm run lint
 ```
 
-## Project Structure
+### Specific Filesystem Module Tests
 
-```
-audiobook-tagger/
-|- src/                        # Application source code
-|  |- main/                    # Main process code
-|  |- renderer/                # Renderer process code
-|  |- api/                     # API integration layer
-|  |- core/                    # Core application logic
-|  |- errors/                  # Error handling system
-|- test/                       # Test files
-|- scripts/                    # Development and build scripts
-|- package.json                # Project metadata
+To run only filesystem-related tests:
+```bash
+npm test test/unit/filesystem/
 ```
 
-## Contributing
+## Test Scenarios 
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### FileSystemService Tests
+- Audio format detection
+- Directory scanning
+- File information extraction
+- Symlink handling
+- Error scenario testing
 
-## License
+### FileScanner Tests
+- Mixed file type directory scanning
+- Multi-file audiobook grouping
+- Complex file naming pattern handling
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### FileOrganizer Tests
+- Metadata-based path generation
+- Metadata scenario handling
+- Path sanitization
 
-## Acknowledgments
+## Manual Testing Steps
 
-- Audnexus API (https://api.audnex.us) for providing the metadata service
-- Electron (https://www.electronjs.org/) for the application framework
+1. **Filesystem Scanning**
+   - Open application
+   - Browse and select audiobook directory
+   - Verify:
+     * Progress bar updates
+     * Correct file detection
+     * File list accuracy
+
+2. **File Processing**
+   - Scan directory
+   - Click "Process Files"
+   - Check:
+     * Progress tracking
+     * Status messages
+     * Processing summary
+
+3. **Metadata Search**
+   - Use metadata search input
+   - Search variations:
+     * Full book titles
+     * Partial titles
+     * Author names
+   - Validate:
+     * Search progress
+     * Result display
+     * Error handling
+
+## Test Data Setup
+
+Create a test directory with:
+- Single audiobook files
+- Multi-file audiobook sets
+- Various naming conventions
+- Mixed file types
+
+### Test Directory Example
+```
+test-audiobooks/
+├── single-book.mp3
+├── series-book1.mp3
+├── series-book2.mp3
+├── complex-book-part1.m4b
+├── complex-book-part2.m4b
+└── non-audio/
+    ├── document.txt
+    └── image.jpg
+```
+
+## Troubleshooting
+
+### Common Issues
+- Verify dependency installation
+- Check console logs
+- Confirm test directory permissions
+
+### Logging
+- Logs stored in `<user-data-directory>/logs/`
+- Enable development mode for verbose logging
+
+## Contributing Tests
+
+1. Create test file in `test/unit/filesystem/`
+2. Follow existing test structure
+3. Add new scenarios
+4. Validate with tests
+
+## Performance Notes
+
+- Large libraries may process slowly
+- Monitor memory usage during scanning
+
+## Issue Reporting
+
+Include:
+- Reproduction steps
+- Log files
+- System details:
+  * OS
+  * Node.js version
+  * App version
+
+## Development Best Practices
+
+- Use mock data
+- Implement robust error handling
+- Address edge cases

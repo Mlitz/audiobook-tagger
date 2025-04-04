@@ -1,6 +1,6 @@
 /**
- * Renderer process entry point
- * This file is loaded by the renderer process and initializes the renderer-side functionality
+ * Renderer Process Entry Point
+ * Manages UI interactions and communication with main process
  */
 
 // Initialize logging for renderer process
@@ -37,52 +37,143 @@ function initLogging() {
 
 // Initialize IPC event handling
 function initEvents() {
-    // Listen for app error events
-    window.api.receive('app:error', (data) => {
-        const { source, error } = data;
-        window.logger.error(`Error from ${source}: ${error.message}`);
+    // Listen for app-wide events from main process
+    window.api.receive('app:error', handleAppError);
+    window.api.receive('app:initialized', handleAppInitialized);
 
-        // Here you would show error UI if needed
-        // For Phase 1, we'll just log to console
-        console.error(`Application error from ${source}:`, error);
-    });
+    // Filesystem events
+    window.api.receive('filesystem:scan:progress', handleFilesystemScanProgress);
+    window.api.receive('filesystem:process:progress', handleFileProcessProgress);
 
-    // Listen for app initialization completion
-    window.api.receive('app:initialized', () => {
-        window.logger.info('Application initialization completed');
-
-        // Here you would update the UI to show the app is ready
-        document.body.classList.add('app-ready');
-    });
+    // Metadata events
+    window.api.receive('metadata:search:progress', handleMetadataSearchProgress);
 }
 
-// Function to initialize the app status
-function initAppStatus() {
-    // Get application status
-    window.api.invoke('app:status-async')
-        .then(status => {
-            window.logger.info('Application status', { status });
+// Error handling for application-wide errors
+function handleAppError(data) {
+    const { source, error } = data;
 
-            // Update version in UI if needed
-            if (status.version && document.getElementById('app-version')) {
-                document.getElementById('app-version').textContent = status.version;
-            }
-        })
-        .catch(error => {
-            window.logger.error('Failed to get application status', { error });
-        });
+    // Log the error
+    window.logger.error(`Application error from ${source}`, { error });
+
+    // Display user-friendly error notification
+    displayErrorNotification(
+        `An error occurred in ${source}`,
+        error.message || 'An unexpected error happened'
+    );
 }
 
-// Initialize everything when the document is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize renderer components
+// Handle application initialization
+function handleAppInitialized() {
+    window.logger.info('Application initialization completed');
+
+    // Update UI to show app is ready
+    document.body.classList.add('app-ready');
+
+    // Enable interactive components
+    enableInteractiveComponents();
+}
+
+// Filesystem scan progress handler
+function handleFilesystemScanProgress(progressData) {
+    const progressBar = document.getElementById('filesystem-progress-bar');
+    const statusMessage = document.getElementById('filesystem-status');
+
+    if (progressData.percentage !== undefined) {
+        progressBar.style.width = `${progressData.percentage}%`;
+    }
+
+    statusMessage.textContent = `Scanning: ${progressData.processed} of ${progressData.total} files`;
+}
+
+// File processing progress handler
+function handleFileProcessProgress(progressData) {
+    const progressBar = document.getElementById('processing-progress-bar');
+    const statusMessage = document.getElementById('processing-status');
+
+    if (progressData.percentage !== undefined) {
+        progressBar.style.width = `${progressData.percentage}%`;
+    }
+
+    statusMessage.textContent = `Processing: ${progressData.processed} of ${progressData.total} files`;
+
+    // Update results summary
+    updateProcessingSummary(progressData);
+}
+
+// Metadata search progress handler
+function handleMetadataSearchProgress(progressData) {
+    const statusMessage = document.getElementById('metadata-search-status');
+
+    statusMessage.textContent = `Searching: ${progressData.currentProgress || 'In progress'}`;
+}
+
+// User-friendly error notification
+function displayErrorNotification(title, message) {
+    // Create error notification element
+    const notification = document.createElement('div');
+    notification.classList.add('error-notification');
+    notification.innerHTML = `
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <button class="close-notification">Dismiss</button>
+    `;
+
+    // Add close functionality
+    notification.querySelector('.close-notification').addEventListener('click', () => {
+        notification.remove();
+    });
+
+    // Add to document body
+    document.body.appendChild(notification);
+}
+
+// Enable interactive UI components
+function enableInteractiveComponents() {
+    const scanButton = document.getElementById('scan-btn');
+    const processButton = document.getElementById('process-btn');
+    const searchButton = document.getElementById('metadata-search-btn');
+
+    // Enable buttons that were disabled during initialization
+    if (scanButton) scanButton.disabled = false;
+    if (processButton) processButton.disabled = false;
+    if (searchButton) searchButton.disabled = false;
+}
+
+// Update processing summary
+function updateProcessingSummary(progressData) {
+    const summaryContainer = document.getElementById('processing-summary');
+
+    if (summaryContainer) {
+        summaryContainer.innerHTML = `
+            <p>Total Files: ${progressData.total}</p>
+            <p>Processed: ${progressData.processed}</p>
+            <p>Successful: ${progressData.status?.success || 0}</p>
+            <p>Failed: ${progressData.status?.failed || 0}</p>
+            <p>Skipped: ${progressData.status?.skipped || 0}</p>
+        `;
+    }
+}
+
+// Main initialization function
+function initializeRenderer() {
+    // Initialize core renderer functionality
     initLogging();
     initEvents();
-    initAppStatus();
 
-    // Let main process know the renderer is ready
-    window.api.send('renderer:ready');
+    // Additional initialization can be added here
 
-    // Log that everything is set up
+    // Log that renderer is fully set up
     window.logger.info('Renderer setup complete');
-});
+}
+
+// Initialize when DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializeRenderer);
+
+// Export functions for potential external use or testing
+window.rendererUtils = {
+    displayErrorNotification,
+    handleAppError,
+    handleFilesystemScanProgress,
+    handleFileProcessProgress
+};
